@@ -1,12 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFlag } from './useFlag.js'
-import { navItems, collections, bestsellers, trending, curated, categories } from './data.js'
+import { navItems, collections, bestsellers, trending, curated, categories, categoryPages } from './data.js'
 import './App.css'
 
+// Minimal path router — Netlify's SPA fallback serves index.html for every
+// route, so /bath, /body and /skincare work on direct load and refresh too.
+function usePath() {
+  const [path, setPath] = useState(window.location.pathname)
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  const navigate = (to) => {
+    window.history.pushState({}, '', to)
+    setPath(to)
+    window.scrollTo(0, 0)
+  }
+  return [path, navigate]
+}
+
 // Rituals wordmark — original SVG for demo purposes
-function RitualsLogo() {
+function RitualsLogo({ navigate }) {
   return (
-    <a className="logo" href="#" aria-label="Rituals">
+    <a
+      className="logo"
+      href="/"
+      aria-label="Rituals"
+      onClick={(e) => {
+        if (navigate) {
+          e.preventDefault()
+          navigate('/')
+        }
+      }}
+    >
       <svg className="logo__svg" viewBox="0 0 200 36" role="img" aria-label="Rituals">
         <text
           x="0" y="28"
@@ -51,7 +78,7 @@ function UserIcon() {
   )
 }
 
-function Header({ promoBanner }) {
+function Header({ promoBanner, navigate }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeNav, setActiveNav] = useState(null)
 
@@ -79,7 +106,7 @@ function Header({ promoBanner }) {
             <span />
           </button>
 
-          <RitualsLogo />
+          <RitualsLogo navigate={navigate} />
 
           <nav className="nav" role="navigation">
             {navItems.map((item) => (
@@ -90,6 +117,7 @@ function Header({ promoBanner }) {
                 onClick={(e) => {
                   e.preventDefault()
                   setActiveNav(item.label)
+                  if (item.href.startsWith('/')) navigate(item.href)
                 }}
               >
                 {item.label}
@@ -111,7 +139,13 @@ function Header({ promoBanner }) {
           <nav className="header__mobile-nav">
             {navItems.map((item) => (
               <a key={item.label} href={item.href} className="mobile-nav__link"
-                onClick={() => setMenuOpen(false)}>
+                onClick={(e) => {
+                  setMenuOpen(false)
+                  if (item.href.startsWith('/')) {
+                    e.preventDefault()
+                    navigate(item.href)
+                  }
+                }}>
                 {item.label}
               </a>
             ))}
@@ -183,15 +217,15 @@ function Hero({ heroFlag, ctaFlag }) {
 
 // ODP: category interest signal. `action` is the standard field ODP real-time
 // segments filter on (event.action) — see the audience definitions in ODP.
-function trackCategoryView(category) {
+function trackCategoryView(category, location = 'category_grid') {
   window.zaius?.event('category_view', {
     action: category,
     category,
-    location: 'category_grid',
+    location,
   })
 }
 
-function CategoryStrip() {
+function CategoryStrip({ navigate }) {
   return (
     <section className="categories" id="categories">
       <div className="container">
@@ -199,7 +233,13 @@ function CategoryStrip() {
         <div className="categories__grid">
           {categories.map((cat) => (
             <a key={cat.label} href={cat.href} className="category-card"
-              onClick={() => trackCategoryView(cat.label)}>
+              onClick={(e) => {
+                trackCategoryView(cat.label)
+                if (cat.href.startsWith('/')) {
+                  e.preventDefault()
+                  navigate(cat.href)
+                }
+              }}>
               <div className="category-card__img-wrap">
                 <img src={cat.img} alt={cat.label} className="category-card__img" />
               </div>
@@ -209,6 +249,63 @@ function CategoryStrip() {
         </div>
       </div>
     </section>
+  )
+}
+
+// Category landing page — /bath, /body, /skincare. Fires the same ODP
+// category_view signal as the homepage grid so both paths feed the audiences.
+function CategoryPage({ slug, ctaText, navigate }) {
+  const page = categoryPages[slug]
+
+  useEffect(() => {
+    if (page) trackCategoryView(page.label, 'category_page')
+  }, [page])
+
+  if (!page) return null
+
+  return (
+    <>
+      <section className="category-hero">
+        <div className="category-hero__bg" style={{ backgroundImage: `url(${page.heroImg})` }} />
+        <div className="category-hero__overlay" />
+        <div className="category-hero__content">
+          <nav className="breadcrumb" aria-label="Breadcrumb">
+            <a href="/" onClick={(e) => { e.preventDefault(); navigate('/') }}>Home</a>
+            <span className="breadcrumb__sep">/</span>
+            <span>{page.label}</span>
+          </nav>
+          <span className="hero__eyebrow">{page.eyebrow}</span>
+          <h1 className="hero__title category-hero__title">{page.label}</h1>
+          <p className="category-hero__desc">{page.description}</p>
+        </div>
+      </section>
+
+      <section className="products category-products">
+        <div className="container">
+          <div className="products__header">
+            <h2 className="section-title">{page.label} Collection</h2>
+          </div>
+          <div className="products__grid products__grid--cols-3">
+            {page.products.map((product) => (
+              <article key={product.id} className="product-card">
+                <div className="product-card__img-wrap">
+                  <img src={product.img} alt={product.name} className="product-card__img" />
+                  <button className="product-card__quick-add">Add to Bag</button>
+                </div>
+                <div className="product-card__body">
+                  <span className="product-card__category">{product.category}</span>
+                  <h3 className="product-card__name">{product.name}</h3>
+                  <span className="product-card__price">{product.price}</span>
+                  <a href="#" className="btn btn--product">{ctaText}</a>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <PhilosophyStrip />
+    </>
   )
 }
 
@@ -378,12 +475,15 @@ function FlagStatusOverlay({ heroFlag, ctaFlag, promoFlag, recFlag }) {
 }
 
 export default function App() {
+  const [path, navigate] = usePath()
   const heroFlag = useFlag('hero_layout')
   const ctaFlag = useFlag('cta_label')
   const promoFlag = useFlag('promo_banner')
   const recFlag = useFlag('product_recommendation')
 
   const ctaText = ctaFlag?.decision?.variables?.button_text || 'Shop Now'
+  const slug = path.replace(/^\/+|\/+$/g, '')
+  const isCategoryPage = Boolean(categoryPages[slug])
 
   return (
     <div className="app">
@@ -393,13 +493,19 @@ export default function App() {
         promoFlag={promoFlag}
         recFlag={recFlag}
       />
-      <Header promoBanner={promoFlag} />
+      <Header promoBanner={promoFlag} navigate={navigate} />
       <main>
-        <Hero heroFlag={heroFlag} ctaFlag={ctaFlag} />
-        <CategoryStrip />
-        <FeaturedCollections ctaText={ctaText} />
-        <ProductGrid recFlag={recFlag} ctaText={ctaText} />
-        <PhilosophyStrip />
+        {isCategoryPage ? (
+          <CategoryPage slug={slug} ctaText={ctaText} navigate={navigate} />
+        ) : (
+          <>
+            <Hero heroFlag={heroFlag} ctaFlag={ctaFlag} />
+            <CategoryStrip navigate={navigate} />
+            <FeaturedCollections ctaText={ctaText} />
+            <ProductGrid recFlag={recFlag} ctaText={ctaText} />
+            <PhilosophyStrip />
+          </>
+        )}
       </main>
       <Footer />
     </div>
