@@ -1,18 +1,46 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useFlag } from './useFlag.js'
 import { navItems, collections, bestsellers, trending, curated, categories, categoryPages } from './data.js'
 import './App.css'
+
+// Optimizely Web page (apiName) targeting the homepage. Web only evaluates
+// pages on full page load, so on SPA navigations we deactivate/reactivate it
+// manually — otherwise personalization campaigns never re-run when the
+// visitor returns to the homepage client-side.
+const OPTIMIZELY_HOME_PAGE = '4768539318419456_rituals_netlify'
+
+// Campaign variations append <section id="*-intenders"> after .hero. The page
+// has undo-on-deactivation off and React doesn't own these nodes, so remove
+// them before re-rendering to avoid duplicates and reconciliation clashes.
+function removeInjectedCampaignSections() {
+  document.querySelectorAll('section[id$="-intenders"]').forEach((el) => el.remove())
+}
+
+function syncOptimizelyPage(path) {
+  window.optimizely = window.optimizely || []
+  if (path === '/') {
+    window.optimizely.push({ type: 'page', pageName: OPTIMIZELY_HOME_PAGE })
+  } else {
+    window.optimizely.push({ type: 'page', pageName: OPTIMIZELY_HOME_PAGE, isActive: false })
+  }
+  // ODP pageview for SPA navigations (initial load fires from index.html)
+  window.zaius?.event('pageview')
+}
 
 // Minimal path router — Netlify's SPA fallback serves index.html for every
 // route, so /bath, /body and /skincare work on direct load and refresh too.
 function usePath() {
   const [path, setPath] = useState(window.location.pathname)
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname)
+    const onPop = () => {
+      removeInjectedCampaignSections()
+      setPath(window.location.pathname)
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
   const navigate = (to) => {
+    removeInjectedCampaignSections()
     window.history.pushState({}, '', to)
     setPath(to)
     window.scrollTo(0, 0)
@@ -476,6 +504,19 @@ function FlagStatusOverlay({ heroFlag, ctaFlag, promoFlag, recFlag }) {
 
 export default function App() {
   const [path, navigate] = usePath()
+
+  // Re-sync the Optimizely Web page on SPA route changes. Skip the initial
+  // mount — the snippet already activated it on page load, and a duplicate
+  // activation would append campaign sections twice.
+  const didMount = useRef(false)
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true
+      return
+    }
+    syncOptimizelyPage(path)
+  }, [path])
+
   const heroFlag = useFlag('hero_layout')
   const ctaFlag = useFlag('cta_label')
   const promoFlag = useFlag('promo_banner')
