@@ -181,6 +181,16 @@ function Hero({ heroFlag, ctaFlag }) {
   )
 }
 
+// ODP: category interest signal. `action` is the standard field ODP real-time
+// segments filter on (event.action) — see the audience definitions in ODP.
+function trackCategoryView(category) {
+  window.zaius?.event('category_view', {
+    action: category,
+    category,
+    location: 'category_grid',
+  })
+}
+
 function CategoryStrip() {
   return (
     <section className="categories" id="categories">
@@ -188,7 +198,8 @@ function CategoryStrip() {
         <h2 className="section-title">Shop by Category</h2>
         <div className="categories__grid">
           {categories.map((cat) => (
-            <a key={cat.label} href={cat.href} className="category-card">
+            <a key={cat.label} href={cat.href} className="category-card"
+              onClick={() => trackCategoryView(cat.label)}>
               <div className="category-card__img-wrap">
                 <img src={cat.img} alt={cat.label} className="category-card__img" />
               </div>
