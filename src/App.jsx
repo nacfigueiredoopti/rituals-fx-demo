@@ -78,9 +78,11 @@ function Header({ promoBanner, navigate }) {
 
   // When served via the Fastly worker the promo banner is already rendered
   // into the HTML at the edge — rendering it here again would double it.
+  // show_banner is a boolean FX variable — the SDK returns a real boolean,
+  // so coerce before comparing (edge decisions arrive JSON-typed too).
   const showBanner = !edgeDecisions &&
     promoBanner?.decision?.enabled &&
-    promoBanner.decision.variables?.show_banner === 'true'
+    String(promoBanner.decision.variables?.show_banner) === 'true'
   const bannerText = promoBanner?.decision?.variables?.banner_text || ''
   const bannerStyle = promoBanner?.decision?.variables?.banner_style || 'minimal'
 
