@@ -14,6 +14,12 @@ const DATAFILE_URL = `https://cdn.optimizely.com/datafiles/${SDK_KEY}.json`
 // demo feedback without spamming Optimizely.
 const POLL_MS = 5000
 
+// Set by the Fastly worker (injected into <head>, so it exists before this
+// module runs) when the page is served via the edge. Decisions there are
+// per page load, so client-side datafile polling would be wasted work.
+export const edgeDecisions =
+  typeof window !== 'undefined' ? window.__EDGE_DECISIONS__ || null : null
+
 let currentClient = null
 let currentRevision = null
 const listeners = new Set()
@@ -41,7 +47,7 @@ async function refresh() {
   }
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !edgeDecisions) {
   refresh()
   setInterval(refresh, POLL_MS)
 }

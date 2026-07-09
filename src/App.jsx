@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useFlag } from './useFlag.js'
+import { edgeDecisions } from './optimizely.js'
 import { navItems, collections, bestsellers, trending, curated, categories, categoryPages } from './data.js'
 import './App.css'
 
@@ -75,7 +76,10 @@ function Header({ promoBanner, navigate }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeNav, setActiveNav] = useState(null)
 
-  const showBanner = promoBanner?.decision?.enabled &&
+  // When served via the Fastly worker the promo banner is already rendered
+  // into the HTML at the edge — rendering it here again would double it.
+  const showBanner = !edgeDecisions &&
+    promoBanner?.decision?.enabled &&
     promoBanner.decision.variables?.show_banner === 'true'
   const bannerText = promoBanner?.decision?.variables?.banner_text || ''
   const bannerStyle = promoBanner?.decision?.variables?.banner_style || 'minimal'
@@ -460,7 +464,11 @@ function FlagStatusOverlay({ heroFlag, ctaFlag, promoFlag, recFlag }) {
               </span>
             </div>
           ))}
-          <p className="flag-overlay__hint">Changes in dashboard refresh in ~5s</p>
+          <p className="flag-overlay__hint">
+            {edgeDecisions
+              ? 'Decided at the Fastly edge — reload to re-decide'
+              : 'Changes in dashboard refresh in ~5s'}
+          </p>
         </div>
       )}
     </div>
