@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useFlag } from './useFlag.js'
 import { edgeDecisions } from './optimizely.js'
-import { navItems, collections, bestsellers, trending, curated, categories, categoryPages } from './data.js'
+import { navItems, collections, bestsellers, trending, curated, categories, categoryPages, heroImages } from './data.js'
 import './App.css'
 
 // Full-page navigation router — every navigate() is a real page load so the
@@ -159,12 +159,6 @@ function Hero({ heroFlag, ctaFlag }) {
   const layoutStyle = heroFlag?.decision?.variables?.layout_style || 'cinematic'
   const headline = heroFlag?.decision?.variables?.headline || 'Find Your Ritual'
   const ctaText = ctaFlag?.decision?.variables?.button_text || 'Shop Now'
-
-  const heroImages = {
-    cinematic: 'https://picsum.photos/seed/rituals-hero-cinematic/1920/1080',
-    split: 'https://picsum.photos/seed/rituals-hero-split/1200/800',
-    minimal: 'https://picsum.photos/seed/rituals-hero-minimal/1600/900',
-  }
 
   if (layoutStyle === 'split') {
     return (
