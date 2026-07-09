@@ -3,20 +3,13 @@ import { useFlag } from './useFlag.js'
 import { navItems, collections, bestsellers, trending, curated, categories, categoryPages } from './data.js'
 import './App.css'
 
-// Minimal path router — Netlify's SPA fallback serves index.html for every
-// route, so /bath, /body and /skincare work on direct load and refresh too.
+// Full-page navigation router — every navigate() is a real page load so the
+// Optimizely Web snippet re-evaluates its pages and ODP segment memberships
+// on each move, matching multi-page-site behavior. Netlify's SPA fallback
+// serves index.html for every route, so /bath, /body and /skincare work too.
 function usePath() {
-  const [path, setPath] = useState(window.location.pathname)
-  useEffect(() => {
-    const onPop = () => setPath(window.location.pathname)
-    window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
-  }, [])
-  const navigate = (to) => {
-    window.history.pushState({}, '', to)
-    setPath(to)
-    window.scrollTo(0, 0)
-  }
+  const path = window.location.pathname
+  const navigate = (to) => window.location.assign(to)
   return [path, navigate]
 }
 
